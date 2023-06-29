@@ -1,6 +1,6 @@
 # Linux Kernel Module Backdoor Demonstration
 
-A simple example of a linux kernel module that implements a backdoor that can communicate with another computer, receive shell commands, and send the responses of those commands back, i.e., performs a `reverse shell`. In addition, it can take screenshots and read the user input (keylogger).
+A simple example of a linux kernel module that implements a backdoor that can communicate with another computer, receive shell commands, and send the responses of those commands back, i.e., performs a `reverse shell`. In addition, it can take `screenshots` and read the user input (`keylogger`).
 
 # Table of Contents  
 * [Preparations](#preparations)  
@@ -76,7 +76,15 @@ make clean
 ```
 ## How the code works
 
-`// TODO`
+The main function `backdoor_init` creates a socket, set up the address to connect to and try to connect to the local host/remote server. After the connection has been established, the keylogger is initialized and every time a key is pressed, it is stored in a keylog buffer. Then the loop that send and receive messages is started. First it receives an integer from the local host/remote server that represents the desired option (1 = execute shell command, 2/3 = screenshot, 4 = keylogger and 5 = end connection). After receiving the option 5, it breaks the loop, deletes the temporary files (output and screenshot files) and release the socket.
+
+The option 1 receive a command through the socket, runs the `execute_shell_command` function and read the output file. If the command received is "quit", it ends this option; otherwise it executes that command in a shell and redirects the output of the command to the temporary output file. Then it reads this file and sends its content through the socket.
+
+The option 2 and 3 takes screenshots of the machine with the backdoor. The first one is not compatible with graphical interfaces, it takes a screenshot of the CLI interface using the frame buffer to read the screen data and store it in a temporary PPM image file. As for the option 3, it uses the `execute_shell_command` to run the `gnome-screenshot` command in the selected user space and create a temporary PNG image file with its result. After taking the screenshot, the temporary image file is read and its data is sent through the socket in a hexdump format.
+
+The option 4 gets the keylog buffer that is stored in real time by the keylogger and send it through the socket,
+
+The option 5 breaks the loop, ending the connection.
 
 ## Connecting to the host on a local network
 
@@ -126,11 +134,9 @@ or change the python script to connect to the `ESP32_IP` and `ESP32_PORT1` and r
 ## Connection between host and VM on different networks using a microcontroller (ESP32) in a controlled network
 Change the `SSID` and the `PASSWORD` variables to the WiFi name and password of the network that you controls and the ports that you wish the 2 machines to connect to.
 
-`// TODO:`
+After that, if you want to connect via public IP, you need to configure the port forwarding in your router, so that when you start a connection at your router IP in a selected port, it will redirect the connection to the ESP32 IP in the desired port. You can try using the IPv4 or the IPv6 (if it is compatible with your router).
 
-`// Explain port fowarding through the router and the use of a VPN`
-
-`// ROUTER_IP -> ESP32_IP, ROUTER_PORT -> ESP32_PORT1`
+If you don't have a public IP, you can try to find a VPN service that runs directly in the ESP32 and connect the machines and microcontroller in this VPN (If you can't find one, try using another device to simulate the command and control server).
 
 Then you can load the code in the ESP32 and turn it on. The microcontroller will wait to the 2 connections to be established and will start to redirect the messages between the 2 machines. The `SERVER_IP` and the `SERVER_PORT` values in the backdoor must be changed to the `ROUTER IP` (OR the `VPN IP`) and `PORT2` and then it will connect automatically when the module is loaded.
 
