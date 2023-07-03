@@ -1,5 +1,7 @@
 #include <WiFi.h>
 
+// TODO: edit the main loop to send and receive messages like server.py
+
 const char* ssid = "WIFI_NAME";
 const char* password = "PSWD";
 
