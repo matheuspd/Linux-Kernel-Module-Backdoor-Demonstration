@@ -1,18 +1,16 @@
 #include <WiFi.h>
 
-// TODO: edit the main loop to send and receive messages like server.py
-
 const char* ssid = "WIFI_NAME";
-const char* password = "PSWD";
+const char* password = "WIFI_PSW";
 
-WiFiServer server1(PORT1); // Port 1
-WiFiServer server2(PORT2); // Port 2
+WiFiServer server1(PORT1); // "Attacker"
+WiFiServer server2(PORT2); // Backdoor
 
 WiFiClient client1;
 WiFiClient client2;
 
-String buffer1 = "";
-String buffer2 = "";
+const size_t packetSize = 1024;
+char packet[packetSize];
 
 void setup() {
   Serial.begin(115200);
@@ -32,40 +30,40 @@ void setup() {
 }
 
 void loop() {
-  if (!client1.connected()) {
-    client1 = server1.available();
-  }
-
-  if (!client2.connected()) {
-    client2 = server2.available();
-  }
-
-  if (client1.connected()) {
-    while (client1.available()) {
-      char c = client1.read();
-      if (c == '\n') {
-        Serial.println(buffer1);
-        if (client2.connected()) {
-          client2.print(buffer1 + c);
-        }
-        buffer1 = "";
-      } else {
-        buffer1 += c;
-      }
+  // Check the server for pending client 1 connections
+  if (server1.hasClient()) {
+    if (!client1 || !client1.connected()) {
+      client1 = server1.available();
+      Serial.println("Cliente 1 conectado");
     }
   }
 
-  if (client2.connected()) {
+  // Check the server for pending client 2 connections
+  if (server2.hasClient()) {
+    if (!client2 || !client2.connected()) {
+      client2 = server2.available();
+      Serial.println("Cliente 2 conectado");
+    }
+  }
+
+  // Check if data is available for reading from client 1
+  if (client1 && client1.connected() && client1.available()) {
+    size_t bytesRead = client1.readBytes(packet, packetSize);
+
+    // Redirect packet to Client 2
+    if (client2 && client2.connected()) {
+      client2.write(packet, bytesRead);
+    }
+  }
+
+  // Check if data is available for reading from client 2
+  if (client2 && client2.connected()) {
     while (client2.available()) {
-      char c = client2.read();
-      if (c == '\n') {
-        Serial.println(buffer2);
-        if (client1.connected()) {
-          client1.print(buffer2 + c);
-        }
-        buffer2 = "";
-      } else {
-        buffer2 += c;
+      size_t bytesRead = client2.readBytes(packet, packetSize);
+
+      // Redirect packet to Client 1
+      if (client1 && client1.connected()) {
+        client1.write(packet, bytesRead);
       }
     }
   }

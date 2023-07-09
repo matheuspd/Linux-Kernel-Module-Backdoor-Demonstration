@@ -22,7 +22,7 @@
 #define BUFFER_SIZE 1024
 
 int execute_shell_command(char *cmd);
-int send_message(struct socket *sock, const char *message);
+int send_message(struct socket *sock, char *message);
 int receive_message(struct socket *sock, char *buffer, int buffer_size);
 int read_file(struct socket *sock, char *filename);
 int screenshot_ppm(void);

